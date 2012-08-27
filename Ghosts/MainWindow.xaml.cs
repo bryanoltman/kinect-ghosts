@@ -88,9 +88,7 @@ namespace Ghosts
 
         private KinectSensor sensor;
 
-        private GhostDataContext dataContext;
-
-        private Dictionary<int, GhostSkeletonSequence> trackingIDsToSequences = new Dictionary<int, GhostSkeletonSequence>();
+        private Dictionary<int, Tuple<GhostSkeletonSequence, GhostDataContext>> trackingIDsToSequences = new Dictionary<int, Tuple<GhostSkeletonSequence, GhostDataContext>>();
 
         private List<GhostSkeletonSequence> activeSequences = new List<GhostSkeletonSequence>();
 
@@ -259,28 +257,29 @@ namespace Ghosts
                 // Draw a transparent background to set the render size
                 dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
 
-                if (frame % 2 == 0)
+                lock (lockObj)
                 {
-                    lock (lockObj)
+                    List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
+                    foreach (GhostSkeletonSequence sequence in activeSequences)
                     {
-                        List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
-                        foreach (GhostSkeletonSequence sequence in activeSequences)
+                        if (sequence.currentFrame >= sequence.GhostSkeletons.Count - 1)
                         {
-                            if (sequence.currentFrame >= sequence.GhostSkeletons.Count - 1)
-                            {
-                                sequence.currentFrame = 0;
-                                toRemove.Add(sequence);
-                                continue;
-                            }
-
-                            GhostSkeleton skeleton = sequence.GhostSkeletons[sequence.currentFrame];
-                            this.DrawBonesAndJoints(skeleton, dc);
-                            sequence.currentFrame++;
+                            sequence.currentFrame = 0;
+                            toRemove.Add(sequence);
+                            continue;
                         }
 
-                        toRemove.ForEach(sequence => activeSequences.Remove(sequence));
+                        GhostSkeleton skeleton = sequence.GhostSkeletons[sequence.currentFrame];
+                        this.DrawBonesAndJoints(skeleton, dc);
+                        //if (frame % 2 == 0)
+                        {
+                            sequence.currentFrame++;
+                        }
                     }
+
+                    toRemove.ForEach(sequence => activeSequences.Remove(sequence));
                 }
+              
 
                 // Used to determine when skeletons move off the screen
                 List<int> unseenTrackingIDs = this.trackingIDsToSequences.Keys.ToList();
@@ -297,16 +296,12 @@ namespace Ghosts
                             {
                                 Console.WriteLine("Adding tracking ID " + skel.TrackingId);
                                 sequence = new GhostSkeletonSequence();
-                                lock (lockObj)
-                                {
-                                    this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
-                                }
-
-                                this.trackingIDsToSequences.Add(skel.TrackingId, sequence);
+                                GhostDataContext dataContext = new GhostDataContext();
+                                this.trackingIDsToSequences.Add(skel.TrackingId, new Tuple<GhostSkeletonSequence, GhostDataContext>(sequence, dataContext));
                             }
                             else
                             {
-                                sequence = this.trackingIDsToSequences[skel.TrackingId];
+                                sequence = this.trackingIDsToSequences[skel.TrackingId].Item1;
                             }
 
                             unseenTrackingIDs.Remove(skel.TrackingId);
@@ -320,29 +315,33 @@ namespace Ghosts
 
                 foreach (int trackingID in unseenTrackingIDs)
                 {
-                    Console.WriteLine("Disposing of " + trackingID);
-                    GhostSkeletonSequence sequence = this.trackingIDsToSequences[trackingID];
-                    sequence.FinalizeRecording();
-                    Console.WriteLine("Finalizing sequence " + sequence.ID);
-                    this.trackingIDsToSequences.Remove(trackingID);
-                }
+                    if (!this.trackingIDsToSequences.ContainsKey(trackingID))
+                    {
+                        return;
+                    }
 
-                if (unseenTrackingIDs.Count != 0)
-                {
-                        BackgroundWorker worker = new BackgroundWorker();
-                        worker.DoWork += (obj, args) =>
-                        {
-                            lock (lockObj)
-                            {
-                                isSaving = true;
-                                Console.WriteLine("beginning save");
-                                dataContext.SubmitChanges();
-                                Console.WriteLine("saved!");
-                                isSaving = false;
-                            }
-                        };
+                    Console.WriteLine("we have " + unseenTrackingIDs.Count + " unseen tracking IDs");    
 
-                        worker.RunWorkerAsync();
+                    BackgroundWorker worker = new BackgroundWorker();
+                    worker.DoWork += (obj, args) =>
+                    {
+                        Console.WriteLine("Disposing of " + trackingID);
+                        Tuple<GhostSkeletonSequence, GhostDataContext> tuple = this.trackingIDsToSequences[trackingID];
+                        this.trackingIDsToSequences.Remove(trackingID);
+                        GhostSkeletonSequence sequence = tuple.Item1;
+                        sequence.FinalizeRecording();
+                        Console.WriteLine("Finalizing sequence " + sequence.ID);
+                        isSaving = true;
+                        GhostDataContext dataContext = tuple.Item2;
+                        Console.WriteLine("beginning save");
+                        dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
+                        dataContext.SubmitChanges();
+                        Console.WriteLine("saved!");
+                        isSaving = false;
+                    };
+
+                    worker.RunWorkerAsync();
+
                 }
 
                 // prevent drawing outside of our render area
@@ -358,15 +357,16 @@ namespace Ghosts
             }
 
             GhostSkeletonSequence sequence;
+            GhostDataContext dataContext = new GhostDataContext();
             lock (lockObj)
             {
-                if (this.dataContext.GhostSkeletonSequences.Count() == 0)
+                if (dataContext.GhostSkeletonSequences.Count() == 0)
                 {
                     return;
                 }
 
-                sequence = (from row in this.dataContext.GhostSkeletonSequences
-                            orderby this.dataContext.Random()
+                sequence = (from row in dataContext.GhostSkeletonSequences
+                            orderby dataContext.Random()
                             select row).FirstOrDefault();
                 Console.WriteLine("Ticked! Adding sequence with id " + sequence.ID);
                 this.activeSequences.Add(sequence);
@@ -375,16 +375,16 @@ namespace Ghosts
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            this.dataContext = App.DataContext;
+            GhostDataContext dataContext = new GhostDataContext();
 
             //this.dataContext.DeleteDatabase();
             //App.Current.Shutdown();
 
-            if (!this.dataContext.DatabaseExists())
+            if (!dataContext.DatabaseExists())
             {
                 try
                 {
-                    this.dataContext.CreateDatabase();
+                    dataContext.CreateDatabase();
                 }
                 catch (SqlException ex)
                 {
@@ -393,7 +393,7 @@ namespace Ghosts
                     Console.WriteLine("Deleting...");
                     try
                     {
-                        this.dataContext.DeleteDatabase();
+                        dataContext.DeleteDatabase();
                         Console.WriteLine("Database deleted!");
                     }
                     catch (SqlException ex2)
