@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ordesignerObjectsDiagram dslVersion="1.0.0.0" absoluteBounds="0, 0, 11, 8.5" name="DataClasses1">
+  <DataContextMoniker Name="/GhostDataContext" />
+  <nestedChildShapes>
+    <classShape Id="45a8a2bb-4e9f-42b5-915d-c1e2b1f75530" absoluteBounds="4, 1.5, 2, 1.3862939453125">
+      <DataClassMoniker Name="/GhostDataContext/GhostSkeletonSequence" />
+      <nestedChildShapes>
+        <elementListCompartment Id="9d73f813-449a-46b4-9046-a9dc9ba6ac7e" absoluteBounds="4.0150000000000006, 1.96, 1.9700000000000002, 0.8262939453125" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="84d0b1de-9f78-41c7-8798-b212130b4785" absoluteBounds="4, 4.625, 2, 1.9631982421874996">
+      <DataClassMoniker Name="/GhostDataContext/GhostJoint" />
+      <nestedChildShapes>
+        <elementListCompartment Id="3e69a564-2e9b-45a7-8a64-6fe7df7eb47d" absoluteBounds="4.015, 5.085, 1.9700000000000002, 1.4031982421875" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <classShape Id="671b6559-848f-4053-885c-d1df5f4b6dc8" absoluteBounds="4, 3.125, 2, 1.1939925130208327">
+      <DataClassMoniker Name="/GhostDataContext/GhostSkeleton" />
+      <nestedChildShapes>
+        <elementListCompartment Id="5ec1d6a8-cb22-4674-9096-d2ce3510cc9b" absoluteBounds="4.015, 3.585, 1.9700000000000002, 0.63399251302083326" name="DataPropertiesCompartment" titleTextColor="Black" itemTextColor="Black" />
+      </nestedChildShapes>
+    </classShape>
+    <associationConnector edgePoints="[(5 : 2.8862939453125); (5 : 3.125)]" fixedFrom="NotFixed" fixedTo="NotFixed">
+      <AssociationMoniker Name="/GhostDataContext/GhostSkeletonSequence/GhostSkeletonSequence_GhostSkeleton" />
+      <nodes>
+        <classShapeMoniker Id="45a8a2bb-4e9f-42b5-915d-c1e2b1f75530" />
+        <classShapeMoniker Id="671b6559-848f-4053-885c-d1df5f4b6dc8" />
+      </nodes>
+    </associationConnector>
+    <associationConnector edgePoints="[(5 : 4.31899251302083); (5 : 4.625)]" fixedFrom="Algorithm" fixedTo="Algorithm">
+      <AssociationMoniker Name="/GhostDataContext/GhostSkeleton/GhostSkeleton_GhostJoint" />
+      <nodes>
+        <classShapeMoniker Id="671b6559-848f-4053-885c-d1df5f4b6dc8" />
+        <classShapeMoniker Id="84d0b1de-9f78-41c7-8798-b212130b4785" />
+      </nodes>
+    </associationConnector>
+  </nestedChildShapes>
+</ordesignerObjectsDiagram>

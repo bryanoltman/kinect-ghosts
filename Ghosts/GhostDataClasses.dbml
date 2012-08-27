@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?><Database Class="GhostDataContext" xmlns="http://schemas.microsoft.com/linqtosql/dbml/2007">
+  <Connection Mode="AppSettings" ConnectionString="Data Source=(LocalDB)\v11.0;AttachDbFilename=C:\Users\Bryan\Documents\GhostDB.mdf;Integrated Security=True;Connect Timeout=30" SettingsObjectName="Ghosts.Properties.Settings" SettingsPropertyName="GhostDBConnectionString" Provider="System.Data.SqlClient" />
+  <Table Name="" Member="GhostSkeletonSequences">
+    <Type Name="GhostSkeletonSequence">
+      <Column Name="ID" AutoSync="Never" Type="System.Int32" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="StartDate" Type="System.DateTime" CanBeNull="true" />
+      <Column Name="EndDate" Type="System.DateTime" CanBeNull="true" />
+      <Association Name="GhostSkeletonSequence_GhostSkeleton" Member="GhostSkeletons" ThisKey="ID" OtherKey="SequenceID" Type="GhostSkeleton" />
+    </Type>
+  </Table>
+  <Table Name="" Member="GhostJoints">
+    <Type Name="GhostJoint">
+      <Column Name="X" Type="System.Single" CanBeNull="false" />
+      <Column Name="Y" Type="System.Single" CanBeNull="false" />
+      <Column Name="Z" Type="System.Single" CanBeNull="false" />
+      <Column Name="ID" AutoSync="Never" Type="System.Int32" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="SkeletonID" Type="System.Int32" CanBeNull="false" />
+      <Column Member="JointType" Type="System.Int32" CanBeNull="false" />
+      <Association Name="GhostSkeleton_GhostJoint" Member="GhostSkeleton" ThisKey="SkeletonID" OtherKey="ID" Type="GhostSkeleton" IsForeignKey="true" />
+    </Type>
+  </Table>
+  <Table Name="" Member="GhostSkeletons">
+    <Type Name="GhostSkeleton">
+      <Column Name="ID" AutoSync="Never" Type="System.Int32" IsPrimaryKey="true" IsDbGenerated="true" CanBeNull="false" />
+      <Column Name="SequenceID" Type="System.Int32" CanBeNull="false" />
+      <Association Name="GhostSkeleton_GhostJoint" Member="GhostJoints" ThisKey="ID" OtherKey="SkeletonID" Type="GhostJoint" />
+      <Association Name="GhostSkeletonSequence_GhostSkeleton" Member="GhostSkeletonSequence" ThisKey="SequenceID" OtherKey="ID" Type="GhostSkeletonSequence" IsForeignKey="true" />
+    </Type>
+  </Table>
+</Database>
