@@ -283,12 +283,12 @@ namespace Ghosts
 
         private void sensor_ColorFrameReady(object sender, ColorImageFrameReadyEventArgs e)
         {
-            frameCount++;
-
             using (ColorImageFrame colorFrame = e.OpenColorImageFrame())
             {
                 if (colorFrame != null)
                 {
+                    frameCount++;
+
                     using (DrawingContext dc = this.drawingGroup.Open())
                     {
                         // Copy the pixel data from the image to a temporary array
@@ -330,7 +330,7 @@ namespace Ghosts
                                 GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
                                 this.DrawBonesAndJoints(skeleton, dc);
 
-                                if (frameCount % 4 == 0)
+                                if (frameCount % 2 == 0)
                                 {
                                     sequence.CurrentFrame++;
                                 }
@@ -353,25 +353,6 @@ namespace Ghosts
                     skeletons = new Skeleton[skeletonFrame.SkeletonArrayLength];
                     skeletonFrame.CopySkeletonDataTo(skeletons);
                 }
-            }
-
-            lock (lockObj)
-            {
-                List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
-                foreach (GhostSkeletonSequence sequence in activeSequences)
-                {
-                    if (sequence.CurrentFrame >= sequence.SavedSkeletons.Count - 1)
-                    {
-                        sequence.CurrentFrame = 0;
-                        toRemove.Add(sequence);
-                        continue;
-                    }
-
-                    GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
-                    sequence.CurrentFrame++;
-                }
-
-                toRemove.ForEach(sequence => activeSequences.Remove(sequence));
             }
 
             // Used to determine when skeletons move off the screen
@@ -400,8 +381,6 @@ namespace Ghosts
 
                         sequence.AddSkeleton(skel);
                     }
-
-                    //this.DrawBonesAndJoints(skel, dc);
                 }
             }
 
