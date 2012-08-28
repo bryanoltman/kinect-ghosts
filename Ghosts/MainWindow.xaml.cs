@@ -57,26 +57,6 @@ namespace Ghosts
         private readonly Brush centerPointBrush = Brushes.Blue;
 
         /// <summary>
-        /// Brush used for drawing joints that are currently tracked
-        /// </summary>
-        private readonly Brush trackedJointBrush = new SolidColorBrush(Color.FromArgb(255, 68, 192, 68));
-
-        /// <summary>
-        /// Brush used for drawing joints that are currently inferred
-        /// </summary>        
-        private readonly Brush inferredJointBrush = Brushes.Yellow;
-
-        /// <summary>
-        /// Pen used for drawing bones that are currently tracked
-        /// </summary>
-        private readonly Pen trackedBonePen = new Pen(Brushes.Green, 6);
-
-        /// <summary>
-        /// Pen used for drawing bones that are currently inferred
-        /// </summary>        
-        private readonly Pen inferredBonePen = new Pen(Brushes.Gray, 1);
-
-        /// <summary>
         /// Drawing group for skeleton rendering output
         /// </summary>
         private DrawingGroup drawingGroup;
@@ -100,7 +80,19 @@ namespace Ghosts
 
         private bool isSaving = false;
 
+        private int frameCount = 0;
+
         private GhostDataContext dataContext;
+
+        /// <summary>
+        /// Bitmap that will hold color information
+        /// </summary>
+        private WriteableBitmap colorBitmap;
+
+        /// <summary>
+        /// Intermediate storage for the color data received from the camera
+        /// </summary>
+        private byte[] colorPixels;
         #endregion
 
         public MainWindow()
@@ -112,124 +104,57 @@ namespace Ghosts
 
         private void DrawBonesAndJoints(GhostSkeleton skeleton, DrawingContext drawingContext)
         {
+            byte alpha = 100;
+
             // Render Torso
-            this.DrawBone(skeleton.GetJoint(JointType.Head), skeleton.GetJoint(JointType.ShoulderCenter), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.ShoulderLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.ShoulderRight), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.Spine), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.Spine), skeleton.GetJoint(JointType.HipCenter), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.HipCenter), skeleton.GetJoint(JointType.HipLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.HipCenter), skeleton.GetJoint(JointType.HipRight), drawingContext);
+            this.DrawBone(skeleton.GetJoint(JointType.Head), skeleton.GetJoint(JointType.ShoulderCenter), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.ShoulderLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.ShoulderRight), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.ShoulderCenter), skeleton.GetJoint(JointType.Spine), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.Spine), skeleton.GetJoint(JointType.HipCenter), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.HipCenter), skeleton.GetJoint(JointType.HipLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.HipCenter), skeleton.GetJoint(JointType.HipRight), drawingContext, alpha);
 
             // Left Arm
-            this.DrawBone(skeleton.GetJoint(JointType.ShoulderLeft), skeleton.GetJoint(JointType.ElbowLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.ElbowLeft), skeleton.GetJoint(JointType.WristLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.WristLeft), skeleton.GetJoint(JointType.HandLeft), drawingContext);
+            this.DrawBone(skeleton.GetJoint(JointType.ShoulderLeft), skeleton.GetJoint(JointType.ElbowLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.ElbowLeft), skeleton.GetJoint(JointType.WristLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.WristLeft), skeleton.GetJoint(JointType.HandLeft), drawingContext, alpha);
 
             // Right Arm
-            this.DrawBone(skeleton.GetJoint(JointType.ShoulderRight), skeleton.GetJoint(JointType.ElbowRight), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.ElbowRight), skeleton.GetJoint(JointType.WristRight), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.WristRight), skeleton.GetJoint(JointType.HandRight), drawingContext);
+            this.DrawBone(skeleton.GetJoint(JointType.ShoulderRight), skeleton.GetJoint(JointType.ElbowRight), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.ElbowRight), skeleton.GetJoint(JointType.WristRight), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.WristRight), skeleton.GetJoint(JointType.HandRight), drawingContext, alpha);
 
             // Left Leg
-            this.DrawBone(skeleton.GetJoint(JointType.HipLeft), skeleton.GetJoint(JointType.KneeLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.KneeLeft), skeleton.GetJoint(JointType.AnkleLeft), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.AnkleLeft), skeleton.GetJoint(JointType.FootLeft), drawingContext);
+            this.DrawBone(skeleton.GetJoint(JointType.HipLeft), skeleton.GetJoint(JointType.KneeLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.KneeLeft), skeleton.GetJoint(JointType.AnkleLeft), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.AnkleLeft), skeleton.GetJoint(JointType.FootLeft), drawingContext, alpha);
 
             // Right Leg
-            this.DrawBone(skeleton.GetJoint(JointType.HipRight), skeleton.GetJoint(JointType.KneeRight), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.KneeRight), skeleton.GetJoint(JointType.AnkleRight), drawingContext);
-            this.DrawBone(skeleton.GetJoint(JointType.AnkleRight), skeleton.GetJoint(JointType.FootRight), drawingContext);
+            this.DrawBone(skeleton.GetJoint(JointType.HipRight), skeleton.GetJoint(JointType.KneeRight), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.KneeRight), skeleton.GetJoint(JointType.AnkleRight), drawingContext, alpha);
+            this.DrawBone(skeleton.GetJoint(JointType.AnkleRight), skeleton.GetJoint(JointType.FootRight), drawingContext, alpha);
         }
 
-        private void DrawBonesAndJoints(Skeleton skeleton, DrawingContext drawingContext)
+        private void DrawBone(Joint joint0, Joint joint1, DrawingContext drawingContext, byte alpha)
         {
-            // Render Torso
-            this.DrawBone(skeleton.Joints[JointType.Head], skeleton.Joints[JointType.ShoulderCenter], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.ShoulderCenter], skeleton.Joints[JointType.ShoulderLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.ShoulderCenter], skeleton.Joints[JointType.ShoulderRight], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.ShoulderCenter], skeleton.Joints[JointType.Spine], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.Spine], skeleton.Joints[JointType.HipCenter], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.HipCenter], skeleton.Joints[JointType.HipLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.HipCenter], skeleton.Joints[JointType.HipRight], drawingContext);
-
-            // Left Arm
-            this.DrawBone(skeleton.Joints[JointType.ShoulderLeft], skeleton.Joints[JointType.ElbowLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.ElbowLeft], skeleton.Joints[JointType.WristLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.WristLeft], skeleton.Joints[JointType.HandLeft], drawingContext);
-
-            // Right Arm
-            this.DrawBone(skeleton.Joints[JointType.ShoulderRight], skeleton.Joints[JointType.ElbowRight], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.ElbowRight], skeleton.Joints[JointType.WristRight], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.WristRight], skeleton.Joints[JointType.HandRight], drawingContext);
-
-            // Left Leg
-            this.DrawBone(skeleton.Joints[JointType.HipLeft], skeleton.Joints[JointType.KneeLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.KneeLeft], skeleton.Joints[JointType.AnkleLeft], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.AnkleLeft], skeleton.Joints[JointType.FootLeft], drawingContext);
-
-            // Right Leg
-            this.DrawBone(skeleton.Joints[JointType.HipRight], skeleton.Joints[JointType.KneeRight], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.KneeRight], skeleton.Joints[JointType.AnkleRight], drawingContext);
-            this.DrawBone(skeleton.Joints[JointType.AnkleRight], skeleton.Joints[JointType.FootRight], drawingContext);
-
-            //// Render Joints
-            //foreach (Joint joint in skeleton.Joints)
-            //{
-            //    Brush drawBrush = null;
-
-            //    if (joint.TrackingState == JointTrackingState.Tracked)
-            //    {
-            //        drawBrush = this.trackedJointBrush;
-            //    }
-            //    else if (joint.TrackingState == JointTrackingState.Inferred)
-            //    {
-            //        drawBrush = this.inferredJointBrush;
-            //    }
-
-            //    if (drawBrush != null)
-            //    {
-            //        drawingContext.DrawEllipse(drawBrush, null, this.SkeletonPointToScreen(joint.Position), JointThickness, JointThickness);
-            //    }
-            //}
+            this.DrawBone(new GhostJoint(joint0), new GhostJoint(joint1), drawingContext, alpha);
         }
 
-        private void DrawBone(Joint joint0, Joint joint1, DrawingContext drawingContext)
+        private void DrawBone(GhostJoint joint0, GhostJoint joint1, DrawingContext drawingContext, byte alpha)
         {
-            this.DrawBone(new GhostJoint(joint0), new GhostJoint(joint1), drawingContext);
-        }
+            Pen drawPen = new Pen(new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0)), 6);
+            Point point0 = this.SkeletonPointToScreen(new SkeletonPoint() { X = joint0.X, Y = joint0.Y, Z = joint0.Z });
+            Point point1 = this.SkeletonPointToScreen(new SkeletonPoint() { X = joint1.X, Y = joint1.Y, Z = joint1.Z });
 
-        private void DrawBone(GhostJoint joint0, GhostJoint joint1, DrawingContext drawingContext)
-        {
-            //Joint joint0 = skeleton.Joints[jointType0];
-            //Joint joint1 = skeleton.Joints[jointType1];
+            int padding = 3;
+            if (point0.X < padding || point0.Y < padding || point0.X + padding > RenderWidth || point0.Y + padding > RenderHeight ||
+                point1.X < padding || point1.Y < padding || point1.X + padding > RenderWidth || point1.Y + padding > RenderHeight)
+            {
+                return;
+            }
 
-            //// If we can't find either of these joints, exit
-            //if (joint0.TrackingState == JointTrackingState.NotTracked ||
-            //    joint1.TrackingState == JointTrackingState.NotTracked)
-            //{
-            //    return;
-            //}
-
-            //// Don't draw if both points are inferred
-            //if (joint0.TrackingState == JointTrackingState.Inferred &&
-            //    joint1.TrackingState == JointTrackingState.Inferred)
-            //{
-            //    return;
-            //}
-
-            //// We assume all drawn bones are inferred unless BOTH joints are tracked
-            //Pen drawPen = this.inferredBonePen;
-            //if (joint0.TrackingState == JointTrackingState.Tracked && joint1.TrackingState == JointTrackingState.Tracked)
-            //{
-            //    drawPen = this.trackedBonePen;
-            //}
-
-            Pen drawPen = this.trackedBonePen;
-            SkeletonPoint point0 = new SkeletonPoint() { X = joint0.X, Y = joint0.Y, Z = joint0.Z };
-            SkeletonPoint point1 = new SkeletonPoint() { X = joint1.X, Y = joint1.Y, Z = joint1.Z };
-
-            drawingContext.DrawLine(drawPen, this.SkeletonPointToScreen(point0), this.SkeletonPointToScreen(point1));
+            drawingContext.DrawLine(drawPen, point0, point1);
         }
 
         private Point SkeletonPointToScreen(SkeletonPoint skelpoint)
@@ -242,140 +167,6 @@ namespace Ghosts
         #endregion
 
         #region Event Handlers
-        private void sensor_SkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
-        {
-            Skeleton[] skeletons = new Skeleton[0];
-            using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())
-            {
-                if (skeletonFrame != null)
-                {
-                    skeletons = new Skeleton[skeletonFrame.SkeletonArrayLength];
-                    skeletonFrame.CopySkeletonDataTo(skeletons);
-                }
-            }
-
-            using (DrawingContext dc = this.drawingGroup.Open())
-            {
-                // Draw a transparent background to set the render size
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-
-                lock (lockObj)
-                {
-                    List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
-                    foreach (GhostSkeletonSequence sequence in activeSequences)
-                    {
-                        if (sequence.CurrentFrame >= sequence.SavedSkeletons.Count - 1)
-                        {
-                            sequence.CurrentFrame = 0;
-                            toRemove.Add(sequence);
-                            continue;
-                        }
-
-                        GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
-                        this.DrawBonesAndJoints(skeleton, dc);
-                        sequence.CurrentFrame++;
-                    }
-
-                    toRemove.ForEach(sequence => activeSequences.Remove(sequence));
-                }
-              
-                // Used to determine when skeletons move off the screen
-                List<int> unseenTrackingIDs = this.trackingIDsToSequences.Keys.ToList();
-
-                foreach (Skeleton skel in skeletons)
-                {
-                    if (skel.TrackingState == SkeletonTrackingState.Tracked)
-                    {
-                        if (!isSaving)
-                        {
-                            GhostSkeletonSequence sequence;
-
-                            if (!this.trackingIDsToSequences.ContainsKey(skel.TrackingId))
-                            {
-                                Console.WriteLine("Adding tracking ID " + skel.TrackingId);
-                                sequence = new GhostSkeletonSequence();
-                                this.trackingIDsToSequences.Add(skel.TrackingId, sequence);
-                            }
-                            else
-                            {
-                                sequence = this.trackingIDsToSequences[skel.TrackingId];
-                            }
-
-                            unseenTrackingIDs.Remove(skel.TrackingId);
-
-                            sequence.AddSkeleton(skel);
-                        }
-
-                        this.DrawBonesAndJoints(skel, dc);
-                    }
-                }
-
-                if (!isSaving)
-                {
-                    foreach (int trackingID in unseenTrackingIDs)
-                    {
-                        if (!this.trackingIDsToSequences.ContainsKey(trackingID))
-                        {
-                            return;
-                        }
-
-                        Console.WriteLine("we have " + unseenTrackingIDs.Count + " unseen tracking IDs");
-
-                        BackgroundWorker worker = new BackgroundWorker();
-                        worker.DoWork += (obj, args) =>
-                        {
-                            GhostSkeletonSequence sequence = this.trackingIDsToSequences[trackingID];
-                            this.trackingIDsToSequences.Remove(trackingID);
-
-                            sequence.FinalizeRecording();
-                            isSaving = true;
-                            Console.WriteLine("beginning save");
-                            this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
-                            this.dataContext.SubmitChanges();
-                            Console.WriteLine("saved!");
-
-                            Console.WriteLine("Locking down. updating saved sequences");
-                            lock (lockObj)
-                            {
-                                sequence.UpdateCache();
-                                this.savedSequences.Add(sequence);
-                            }
-
-                            Console.WriteLine("Saved sequences updated. Unlocking.");
-
-                            isSaving = false;
-                        };
-
-                        worker.RunWorkerAsync();
-                    }
-                }
-
-                // prevent drawing outside of our render area
-                this.drawingGroup.ClipGeometry = new RectangleGeometry(new Rect(0.0, 0.0, RenderWidth, RenderHeight));
-            }
-        }
-
-        private void timer_Elapsed(object sender, ElapsedEventArgs e)
-        {
-            Console.WriteLine("Ticked");
-            if (this.activeSequences.Count > 5 || this.savedSequences.Count == 0)
-            {
-                Console.WriteLine("Not enough saved/active sequences.");
-                return;
-            }
-
-            GhostSkeletonSequence sequence;
-            Console.WriteLine("Locking down...");
-            lock (lockObj)
-            {
-                int randomIndex = this.random.Next() % this.savedSequences.Count;
-                sequence = this.savedSequences[randomIndex];
-                Console.WriteLine("In Ticked: adding sequence with id " + sequence.ID);
-                this.activeSequences.Add(sequence);
-            }
-            Console.WriteLine("Unlocking in Ticked");
-        }
-
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             this.dataContext = new GhostDataContext();
@@ -411,14 +202,6 @@ namespace Ghosts
 
             this.savedSequences = dataContext.GhostSkeletonSequences.ToList();
 
-            // Create the drawing group we'll use for drawing
-            this.drawingGroup = new DrawingGroup();
-
-            // Create an image source that we can use in our image control
-            this.imageSource = new DrawingImage(this.drawingGroup);
-
-            // Display the drawing using our image control
-            this.SkeletonImage.Source = this.imageSource;
             foreach (KinectSensor potentialSensor in KinectSensor.KinectSensors)
             {
                 if (potentialSensor.Status == KinectStatus.Connected)
@@ -430,8 +213,26 @@ namespace Ghosts
 
             if (this.sensor != null)
             {
+                this.sensor.ColorStream.Enable();
+                this.sensor.ColorFrameReady += sensor_ColorFrameReady;
+
                 this.sensor.SkeletonStream.Enable();
                 this.sensor.SkeletonFrameReady += sensor_SkeletonFrameReady;
+
+                // Create the drawing group we'll use for drawing
+                this.drawingGroup = new DrawingGroup();
+
+                // Create an image source that we can use in our image control
+                this.imageSource = new DrawingImage(this.drawingGroup);
+
+                // Allocate space to put the pixels we'll receive
+                this.colorPixels = new byte[this.sensor.ColorStream.FramePixelDataLength];
+
+                // This is the bitmap we'll display on-screen
+                this.colorBitmap = new WriteableBitmap(this.sensor.ColorStream.FrameWidth, this.sensor.ColorStream.FrameHeight, 96.0, 96.0, PixelFormats.Bgra32, null);
+
+                // Display the drawing using our image control
+                this.SkeletonImage.Source = this.imageSource;
 
                 try
                 {
@@ -460,6 +261,192 @@ namespace Ghosts
             if (this.sensor != null)
             {
                 this.sensor.Stop();
+            }
+        }
+
+        private void timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            if (this.activeSequences.Count > 5 || this.savedSequences.Count == 0)
+            {
+                Console.WriteLine("Not enough saved/active sequences.");
+                return;
+            }
+
+            GhostSkeletonSequence sequence;
+            lock (lockObj)
+            {
+                int randomIndex = this.random.Next() % this.savedSequences.Count;
+                sequence = this.savedSequences[randomIndex];
+                this.activeSequences.Add(sequence);
+            }
+        }
+
+        private void sensor_ColorFrameReady(object sender, ColorImageFrameReadyEventArgs e)
+        {
+            frameCount++;
+
+            using (ColorImageFrame colorFrame = e.OpenColorImageFrame())
+            {
+                if (colorFrame != null)
+                {
+                    using (DrawingContext dc = this.drawingGroup.Open())
+                    {
+                        // Copy the pixel data from the image to a temporary array
+                        colorFrame.CopyPixelDataTo(this.colorPixels);
+
+                        for (int i = 0; i < this.colorPixels.Length; i += 4)
+                        {
+                            // Convert image to grayscale
+                            int avg = (this.colorPixels[i] + this.colorPixels[i + 1] + this.colorPixels[i + 2]) / 3;
+                            byte avgByte = Convert.ToByte(avg);
+
+                            this.colorPixels[i] = avgByte;
+                            this.colorPixels[i + 1] = avgByte;
+                            this.colorPixels[i + 2] = avgByte;
+                            this.colorPixels[i + 3] = 255; // alpha channel
+                            //this.colorPixels[i + 3] = Convert.ToByte(255 - avg);
+                        }
+
+                        // Write the pixel data into our bitmap
+                        this.colorBitmap.WritePixels(
+                            new Int32Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight),
+                            this.colorPixels,
+                            this.colorBitmap.PixelWidth * sizeof(int),
+                            0);
+                        dc.DrawImage(this.colorBitmap, new Rect(0, 0, this.colorBitmap.PixelWidth, this.colorBitmap.PixelHeight));
+
+                        lock (lockObj)
+                        {
+                            List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
+                            foreach (GhostSkeletonSequence sequence in activeSequences)
+                            {
+                                if (sequence.CurrentFrame >= sequence.SavedSkeletons.Count - 1)
+                                {
+                                    sequence.CurrentFrame = 0;
+                                    toRemove.Add(sequence);
+                                    continue;
+                                }
+
+                                GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
+                                this.DrawBonesAndJoints(skeleton, dc);
+
+                                if (frameCount % 4 == 0)
+                                {
+                                    sequence.CurrentFrame++;
+                                }
+                            }
+
+                            toRemove.ForEach(sequence => activeSequences.Remove(sequence));
+                        }
+                    }
+                }
+            }
+        }
+
+        private void sensor_SkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
+        {
+            Skeleton[] skeletons = new Skeleton[0];
+            using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())
+            {
+                if (skeletonFrame != null)
+                {
+                    skeletons = new Skeleton[skeletonFrame.SkeletonArrayLength];
+                    skeletonFrame.CopySkeletonDataTo(skeletons);
+                }
+            }
+
+            lock (lockObj)
+            {
+                List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
+                foreach (GhostSkeletonSequence sequence in activeSequences)
+                {
+                    if (sequence.CurrentFrame >= sequence.SavedSkeletons.Count - 1)
+                    {
+                        sequence.CurrentFrame = 0;
+                        toRemove.Add(sequence);
+                        continue;
+                    }
+
+                    GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
+                    sequence.CurrentFrame++;
+                }
+
+                toRemove.ForEach(sequence => activeSequences.Remove(sequence));
+            }
+
+            // Used to determine when skeletons move off the screen
+            List<int> unseenTrackingIDs = this.trackingIDsToSequences.Keys.ToList();
+
+            foreach (Skeleton skel in skeletons)
+            {
+                if (skel.TrackingState == SkeletonTrackingState.Tracked)
+                {
+                    if (!isSaving)
+                    {
+                        GhostSkeletonSequence sequence;
+
+                        if (!this.trackingIDsToSequences.ContainsKey(skel.TrackingId))
+                        {
+                            Console.WriteLine("Adding tracking ID " + skel.TrackingId);
+                            sequence = new GhostSkeletonSequence();
+                            this.trackingIDsToSequences.Add(skel.TrackingId, sequence);
+                        }
+                        else
+                        {
+                            sequence = this.trackingIDsToSequences[skel.TrackingId];
+                        }
+
+                        unseenTrackingIDs.Remove(skel.TrackingId);
+
+                        sequence.AddSkeleton(skel);
+                    }
+
+                    //this.DrawBonesAndJoints(skel, dc);
+                }
+            }
+
+            if (!isSaving)
+            {
+                foreach (int trackingID in unseenTrackingIDs)
+                {
+                    if (!this.trackingIDsToSequences.ContainsKey(trackingID))
+                    {
+                        return;
+                    }
+
+                    Console.WriteLine("we have " + unseenTrackingIDs.Count + " unseen tracking IDs");
+
+                    BackgroundWorker worker = new BackgroundWorker();
+                    worker.DoWork += (obj, args) =>
+                    {
+                        GhostSkeletonSequence sequence = this.trackingIDsToSequences[trackingID];
+                        this.trackingIDsToSequences.Remove(trackingID);
+
+                        sequence.FinalizeRecording();
+                        isSaving = true;
+                        Console.WriteLine("beginning save");
+                        this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
+                        this.dataContext.SubmitChanges();
+                        Console.WriteLine("saved!");
+
+                        Console.WriteLine("Locking down. updating saved sequences");
+                        lock (lockObj)
+                        {
+                            sequence.UpdateCache();
+                            this.savedSequences.Add(sequence);
+                        }
+
+                        Console.WriteLine("Saved sequences updated. Unlocking.");
+
+                        isSaving = false;
+                    };
+
+                    worker.RunWorkerAsync();
+                }
+
+
+                // prevent drawing outside of our render area
+                this.drawingGroup.ClipGeometry = new RectangleGeometry(new Rect(0.0, 0.0, RenderWidth, RenderHeight));
             }
         }
         #endregion
