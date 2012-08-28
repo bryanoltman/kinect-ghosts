@@ -9,10 +9,19 @@ namespace Ghosts
 {
     public partial class GhostSkeleton
     {
+        private List<GhostJoint> _savedJoints;
+
         public List<GhostJoint> SavedJoints
         {
-            get;
-            private set;
+            get
+            {
+                _savedJoints = _savedJoints ?? new List<GhostJoint>();
+                return _savedJoints;
+            }
+            private set
+            {
+                _savedJoints = value;
+            }
         }
 
         public GhostSkeleton(Skeleton skeleton) : this()

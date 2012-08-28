@@ -330,10 +330,7 @@ namespace Ghosts
                                 GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
                                 this.DrawBonesAndJoints(skeleton, dc);
 
-                                if (frameCount % 2 == 0)
-                                {
-                                    sequence.CurrentFrame++;
-                                }
+                                sequence.CurrentFrame++;
                             }
 
                             toRemove.ForEach(sequence => activeSequences.Remove(sequence));
@@ -404,6 +401,7 @@ namespace Ghosts
                         sequence.FinalizeRecording();
                         isSaving = true;
                         Console.WriteLine("beginning save");
+
                         this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
                         this.dataContext.SubmitChanges();
                         Console.WriteLine("saved!");
@@ -411,7 +409,7 @@ namespace Ghosts
                         Console.WriteLine("Locking down. updating saved sequences");
                         lock (lockObj)
                         {
-                            sequence.UpdateCache();
+                            sequence.UpdateCache(GhostSkeletonSequence.DefaultInterpolationFactor);
                             this.savedSequences.Add(sequence);
                         }
 

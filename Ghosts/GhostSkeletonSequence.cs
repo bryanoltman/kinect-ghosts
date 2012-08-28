@@ -9,6 +9,8 @@ namespace Ghosts
 {
     public partial class GhostSkeletonSequence
     {
+        public static int DefaultInterpolationFactor = 2;
+
         public int CurrentFrame
         {
             get;
@@ -34,16 +36,10 @@ namespace Ghosts
             private set;
         }
 
-        //partial void OnCreated()
-        //{
-        //    Console.WriteLine("sequence created with ID: " + this.ID);
-        //    this.SavedSkeletons = this.GhostSkeletons.ToList();
-        //}
-
         partial void OnLoaded()
         {
             Console.WriteLine("Loading sequence with ID: " + this.ID);
-            this.UpdateCache();
+            this.UpdateCache(DefaultInterpolationFactor);
         }
 
         public void AddSkeleton(Skeleton skeleton)
@@ -63,8 +59,38 @@ namespace Ghosts
             this.EndDate = DateTime.Now;
         }
 
-        public void UpdateCache()
+        public void UpdateCache(int interpolationFactor = 0)
         {
+            for (int i = 0; i < this.GhostSkeletons.Count - 1; i += (interpolationFactor + 1))
+            {
+                GhostSkeleton current = this.GhostSkeletons[i];
+                GhostSkeleton next = this.GhostSkeletons[i + 1];
+
+                List<GhostSkeleton> newSkeletons = new List<GhostSkeleton>();
+                for (int j = 0; j < interpolationFactor; j++)
+                {
+                    GhostSkeleton newSkeleton = new GhostSkeleton();
+                    this.GhostSkeletons.Insert(i + j + 1, newSkeleton);
+                    newSkeletons.Add(newSkeleton);
+                }
+
+                foreach (GhostJoint joint in current.GhostJoints)
+                {
+                    GhostJoint nextJoint = next.GetJoint((JointType)joint.JointType);
+                    if (nextJoint == null)
+                    {
+                        continue;
+                    }
+
+                    GhostJoint deltaJoint = (nextJoint - joint) / (interpolationFactor + 1);
+                    for (int j = 0; j < interpolationFactor; j++)
+                    {
+                        GhostJoint newJoint = joint + (deltaJoint * (j + 1));
+                        newSkeletons[j].GhostJoints.Add(newJoint);
+                    }
+                }
+            }
+
             this.SavedSkeletons = this.GhostSkeletons.ToList();
             this.SavedSkeletons.ForEach(skel => skel.UpdateCache());
         }
