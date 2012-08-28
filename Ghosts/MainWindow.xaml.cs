@@ -88,15 +88,19 @@ namespace Ghosts
 
         private KinectSensor sensor;
 
-        private Dictionary<int, Tuple<GhostSkeletonSequence, GhostDataContext>> trackingIDsToSequences = new Dictionary<int, Tuple<GhostSkeletonSequence, GhostDataContext>>();
+        private Dictionary<int, GhostSkeletonSequence> trackingIDsToSequences = new Dictionary<int, GhostSkeletonSequence>();
+
+        private List<GhostSkeletonSequence> savedSequences;
 
         private List<GhostSkeletonSequence> activeSequences = new List<GhostSkeletonSequence>();
 
         private object lockObj = new object();
 
-        private int frame = 0;
+        private Random random = new Random();
 
         private bool isSaving = false;
+
+        private GhostDataContext dataContext;
         #endregion
 
         public MainWindow()
@@ -240,8 +244,6 @@ namespace Ghosts
         #region Event Handlers
         private void sensor_SkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
-            frame++;
-
             Skeleton[] skeletons = new Skeleton[0];
             using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())
             {
@@ -262,25 +264,21 @@ namespace Ghosts
                     List<GhostSkeletonSequence> toRemove = new List<GhostSkeletonSequence>();
                     foreach (GhostSkeletonSequence sequence in activeSequences)
                     {
-                        if (sequence.currentFrame >= sequence.GhostSkeletons.Count - 1)
+                        if (sequence.CurrentFrame >= sequence.SavedSkeletons.Count - 1)
                         {
-                            sequence.currentFrame = 0;
+                            sequence.CurrentFrame = 0;
                             toRemove.Add(sequence);
                             continue;
                         }
 
-                        GhostSkeleton skeleton = sequence.GhostSkeletons[sequence.currentFrame];
+                        GhostSkeleton skeleton = sequence.SavedSkeletons[sequence.CurrentFrame];
                         this.DrawBonesAndJoints(skeleton, dc);
-                        //if (frame % 2 == 0)
-                        {
-                            sequence.currentFrame++;
-                        }
+                        sequence.CurrentFrame++;
                     }
 
                     toRemove.ForEach(sequence => activeSequences.Remove(sequence));
                 }
               
-
                 // Used to determine when skeletons move off the screen
                 List<int> unseenTrackingIDs = this.trackingIDsToSequences.Keys.ToList();
 
@@ -296,12 +294,11 @@ namespace Ghosts
                             {
                                 Console.WriteLine("Adding tracking ID " + skel.TrackingId);
                                 sequence = new GhostSkeletonSequence();
-                                GhostDataContext dataContext = new GhostDataContext();
-                                this.trackingIDsToSequences.Add(skel.TrackingId, new Tuple<GhostSkeletonSequence, GhostDataContext>(sequence, dataContext));
+                                this.trackingIDsToSequences.Add(skel.TrackingId, sequence);
                             }
                             else
                             {
-                                sequence = this.trackingIDsToSequences[skel.TrackingId].Item1;
+                                sequence = this.trackingIDsToSequences[skel.TrackingId];
                             }
 
                             unseenTrackingIDs.Remove(skel.TrackingId);
@@ -313,35 +310,44 @@ namespace Ghosts
                     }
                 }
 
-                foreach (int trackingID in unseenTrackingIDs)
+                if (!isSaving)
                 {
-                    if (!this.trackingIDsToSequences.ContainsKey(trackingID))
+                    foreach (int trackingID in unseenTrackingIDs)
                     {
-                        return;
+                        if (!this.trackingIDsToSequences.ContainsKey(trackingID))
+                        {
+                            return;
+                        }
+
+                        Console.WriteLine("we have " + unseenTrackingIDs.Count + " unseen tracking IDs");
+
+                        BackgroundWorker worker = new BackgroundWorker();
+                        worker.DoWork += (obj, args) =>
+                        {
+                            GhostSkeletonSequence sequence = this.trackingIDsToSequences[trackingID];
+                            this.trackingIDsToSequences.Remove(trackingID);
+
+                            sequence.FinalizeRecording();
+                            isSaving = true;
+                            Console.WriteLine("beginning save");
+                            this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
+                            this.dataContext.SubmitChanges();
+                            Console.WriteLine("saved!");
+
+                            Console.WriteLine("Locking down. updating saved sequences");
+                            lock (lockObj)
+                            {
+                                sequence.UpdateCache();
+                                this.savedSequences.Add(sequence);
+                            }
+
+                            Console.WriteLine("Saved sequences updated. Unlocking.");
+
+                            isSaving = false;
+                        };
+
+                        worker.RunWorkerAsync();
                     }
-
-                    Console.WriteLine("we have " + unseenTrackingIDs.Count + " unseen tracking IDs");    
-
-                    BackgroundWorker worker = new BackgroundWorker();
-                    worker.DoWork += (obj, args) =>
-                    {
-                        Console.WriteLine("Disposing of " + trackingID);
-                        Tuple<GhostSkeletonSequence, GhostDataContext> tuple = this.trackingIDsToSequences[trackingID];
-                        this.trackingIDsToSequences.Remove(trackingID);
-                        GhostSkeletonSequence sequence = tuple.Item1;
-                        sequence.FinalizeRecording();
-                        Console.WriteLine("Finalizing sequence " + sequence.ID);
-                        isSaving = true;
-                        GhostDataContext dataContext = tuple.Item2;
-                        Console.WriteLine("beginning save");
-                        dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
-                        dataContext.SubmitChanges();
-                        Console.WriteLine("saved!");
-                        isSaving = false;
-                    };
-
-                    worker.RunWorkerAsync();
-
                 }
 
                 // prevent drawing outside of our render area
@@ -351,31 +357,28 @@ namespace Ghosts
 
         private void timer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            if (isSaving)
+            Console.WriteLine("Ticked");
+            if (this.activeSequences.Count > 5 || this.savedSequences.Count == 0)
             {
+                Console.WriteLine("Not enough saved/active sequences.");
                 return;
             }
 
             GhostSkeletonSequence sequence;
-            GhostDataContext dataContext = new GhostDataContext();
+            Console.WriteLine("Locking down...");
             lock (lockObj)
             {
-                if (dataContext.GhostSkeletonSequences.Count() == 0)
-                {
-                    return;
-                }
-
-                sequence = (from row in dataContext.GhostSkeletonSequences
-                            orderby dataContext.Random()
-                            select row).FirstOrDefault();
-                Console.WriteLine("Ticked! Adding sequence with id " + sequence.ID);
+                int randomIndex = this.random.Next() % this.savedSequences.Count;
+                sequence = this.savedSequences[randomIndex];
+                Console.WriteLine("In Ticked: adding sequence with id " + sequence.ID);
                 this.activeSequences.Add(sequence);
             }
+            Console.WriteLine("Unlocking in Ticked");
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            GhostDataContext dataContext = new GhostDataContext();
+            this.dataContext = new GhostDataContext();
 
             //this.dataContext.DeleteDatabase();
             //App.Current.Shutdown();
@@ -406,6 +409,8 @@ namespace Ghosts
                 }
             }
 
+            this.savedSequences = dataContext.GhostSkeletonSequences.ToList();
+
             // Create the drawing group we'll use for drawing
             this.drawingGroup = new DrawingGroup();
 
@@ -434,7 +439,7 @@ namespace Ghosts
                     this.sensor.Start();
                     Console.WriteLine("Sensor started");
 
-                    Timer timer = new Timer(5000);
+                    Timer timer = new Timer(3000);
                     timer.Elapsed += timer_Elapsed;
                     timer.Start();
                 }
@@ -443,6 +448,10 @@ namespace Ghosts
                     Console.WriteLine("Sensor start failed. " + ex.Message);
                     this.sensor = null;
                 }
+            }
+            else
+            {
+                MessageBox.Show("No Kinect detected. Please connect the Kinect and restart the program");
             }
         }
 

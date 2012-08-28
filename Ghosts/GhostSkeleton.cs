@@ -9,6 +9,12 @@ namespace Ghosts
 {
     public partial class GhostSkeleton
     {
+        public List<GhostJoint> SavedJoints
+        {
+            get;
+            private set;
+        }
+
         public GhostSkeleton(Skeleton skeleton) : this()
         {
             foreach (Joint joint in skeleton.Joints)
@@ -17,10 +23,21 @@ namespace Ghosts
             }
         }
 
+        partial void OnLoaded()
+        {
+            //Console.WriteLine("Loading skeleton with ID :" + this.ID);
+            this.UpdateCache();
+        }
+
         public GhostJoint GetJoint(JointType type)
         {
-            GhostJoint ghostJoint = this.GhostJoints.SingleOrDefault(joint => joint.JointType == ((int)type));
+            GhostJoint ghostJoint = this.SavedJoints.SingleOrDefault(joint => joint.JointType == ((int)type));
             return ghostJoint;
+        }
+
+        public void UpdateCache()
+        {
+            this.SavedJoints = this.GhostJoints.ToList();
         }
     }
 }

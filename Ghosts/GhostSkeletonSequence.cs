@@ -9,7 +9,7 @@ namespace Ghosts
 {
     public partial class GhostSkeletonSequence
     {
-        public int currentFrame
+        public int CurrentFrame
         {
             get;
             set;
@@ -28,6 +28,24 @@ namespace Ghosts
             }
         }
 
+        public List<GhostSkeleton> SavedSkeletons
+        {
+            get;
+            private set;
+        }
+
+        //partial void OnCreated()
+        //{
+        //    Console.WriteLine("sequence created with ID: " + this.ID);
+        //    this.SavedSkeletons = this.GhostSkeletons.ToList();
+        //}
+
+        partial void OnLoaded()
+        {
+            Console.WriteLine("Loading sequence with ID: " + this.ID);
+            this.UpdateCache();
+        }
+
         public void AddSkeleton(Skeleton skeleton)
         {
             if (this.GhostSkeletons.Count == 0)
@@ -43,6 +61,12 @@ namespace Ghosts
         public void FinalizeRecording()
         {
             this.EndDate = DateTime.Now;
+        }
+
+        public void UpdateCache()
+        {
+            this.SavedSkeletons = this.GhostSkeletons.ToList();
+            this.SavedSkeletons.ForEach(skel => skel.UpdateCache());
         }
     }
 }
