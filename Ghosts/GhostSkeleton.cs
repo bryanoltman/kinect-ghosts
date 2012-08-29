@@ -26,9 +26,12 @@ namespace Ghosts
 
         public GhostSkeleton(Skeleton skeleton) : this()
         {
+            _savedJoints = new List<GhostJoint>();
             foreach (Joint joint in skeleton.Joints)
             {
-                this.GhostJoints.Add(new GhostJoint(joint));
+                GhostJoint newJoint = new GhostJoint(joint);
+                this.GhostJoints.Add(newJoint);
+                _savedJoints.Add(newJoint);
             }
         }
 
