@@ -9,7 +9,7 @@ namespace Ghosts
 {
     public partial class GhostSkeletonSequence
     {
-        public static int DefaultInterpolationFactor = 2;
+        public static int DefaultInterpolationFactor = 1;
 
         public int CurrentFrame
         {
