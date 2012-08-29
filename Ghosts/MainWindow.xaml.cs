@@ -258,6 +258,8 @@ namespace Ghosts
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            this.dataContext.SubmitChanges();
+
             if (this.sensor != null)
             {
                 this.sensor.Stop();
@@ -403,13 +405,12 @@ namespace Ghosts
                         Console.WriteLine("beginning save");
 
                         this.dataContext.GhostSkeletonSequences.InsertOnSubmit(sequence);
-                        this.dataContext.SubmitChanges();
                         Console.WriteLine("saved!");
+                        sequence.UpdateCache(GhostSkeletonSequence.DefaultInterpolationFactor);
 
                         Console.WriteLine("Locking down. updating saved sequences");
                         lock (lockObj)
                         {
-                            sequence.UpdateCache(GhostSkeletonSequence.DefaultInterpolationFactor);
                             this.savedSequences.Add(sequence);
                         }
 
