@@ -42,21 +42,6 @@ namespace Ghosts
         private const double JointThickness = 3;
 
         /// <summary>
-        /// Thickness of body center ellipse
-        /// </summary>
-        private const double BodyCenterThickness = 10;
-
-        /// <summary>
-        /// Thickness of clip edge rectangles
-        /// </summary>
-        private const double ClipBoundsThickness = 10;
-
-        /// <summary>
-        /// Brush used to draw skeleton center point
-        /// </summary>
-        private readonly Brush centerPointBrush = Brushes.Blue;
-
-        /// <summary>
         /// Drawing group for skeleton rendering output
         /// </summary>
         private DrawingGroup drawingGroup;
