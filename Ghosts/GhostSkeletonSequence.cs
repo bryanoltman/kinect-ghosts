@@ -21,6 +21,8 @@ namespace Ghosts
         {
             get
             {
+                // Pretty sure this is a bug, but this property doesn't appear
+                // to ever be used
                 if (this.EndDate.HasValue || this.StartDate.HasValue)
                 {
                     return TimeSpan.Zero;
